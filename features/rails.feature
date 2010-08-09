@@ -234,3 +234,24 @@ Feature: Install the Gem in a Rails application
       | params        | secret: [FILTERED]                            |
       | session       | secret: [FILTERED]                            |
       | url           | http://example.com:123/test/index?param=value |
+
+  Scenario: Filtering parameters from a POST body based on Rails parameter filters
+    When I generate a new Rails application
+    And I configure the Hoptoad shim
+    And I configure my application to require the "hoptoad_notifier" gem
+    And I run the hoptoad generator with "-k myapikey"
+    And I configure the application to filter parameter "secret"
+    And I define a response for "TestController#index":
+      """
+      raise RuntimeError, "some message"
+      """
+    And I route "/test/index" to "test#index"
+    And I perform a POST request to "http://example.com:123/test/index" with params "secret=red23"
+    Then I should receive the following Hoptoad notification:
+      | component     | test                                        |
+      | action        | index                                       |
+      | error message | RuntimeError: some message                  |
+      | error class   | RuntimeError                                |
+      | params        | secret: [FILTERED]                          |
+      | url           | http://example.com:123/test/index           |
+      | cgi-data      | rack.request.form_vars: secret=[FILTERED]   |

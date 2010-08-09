@@ -187,6 +187,7 @@ When /^I define a response for "([^\"]*)":$/ do |controller_and_action, definiti
     file.puts "class #{controller_class_name} < ApplicationController"
     file.puts "def consider_all_requests_local; false; end"
     file.puts "def local_request?; false; end"
+    file.puts "skip_before_filter :verify_authenticity_token"
     file.puts "def #{action}"
     file.puts definition
     file.puts "end"
@@ -194,7 +195,8 @@ When /^I define a response for "([^\"]*)":$/ do |controller_and_action, definiti
   end
 end
 
-When /^I perform a request to "([^\"]*)"$/ do |uri|
+When /^I perform a (POST )?request to "([^\"]*)"(?: with params "([^\"]*)")?$/ do |post, uri, params|
+  method = post.nil? ? :get : :post
   if rails3?
     request_script = <<-SCRIPT
       require 'config/environment'
@@ -215,7 +217,7 @@ When /^I perform a request to "([^\"]*)"$/ do |uri|
     request_script = <<-SCRIPT
       require 'config/environment'
 
-      env = Rack::MockRequest.env_for(#{uri.inspect})
+      env = Rack::MockRequest.env_for(#{uri.inspect}, :method => #{method.inspect}, :params => #{params.inspect})
       app = Rack::Lint.new(ActionController::Dispatcher.new)
 
       status, headers, body = app.call(env)
@@ -290,6 +292,12 @@ Then /^I should receive the following Hoptoad notification:$/ do |table|
     param_key, param_value     = hash['parameters'].split(': ')
     doc.should have_content('//request/params/var/@key',  param_key)
     doc.should have_content('//request/params/var',       param_value)
+  end
+
+  if hash['cgi-data']
+    param_key, param_value     = hash['cgi-data'].split(': ')
+    doc.should have_content('//request/cgi-data/var/@key',  param_key)
+    doc.should have_content('//request/cgi-data/var',       param_value)
   end
 end
 
