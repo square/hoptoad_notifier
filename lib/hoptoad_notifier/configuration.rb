@@ -159,8 +159,8 @@ module HoptoadNotifier
     # @param [Proc] block The new ignore filter
     # @yieldparam [Hash] data The exception data given to +HoptoadNotifier.notify+
     # @yieldreturn [Boolean] If the block returns true the exception will be ignored, otherwise it will be processed by hoptoad.
-    def ignore_by_filter(&block)
-      self.ignore_by_filters << block
+    def ignore_by_filter(*args, &block)
+      self.ignore_by_filters << {:args => args, :block => block}
     end
 
     # Overrides the list of default ignored errors.

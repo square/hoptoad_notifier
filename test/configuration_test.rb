@@ -121,7 +121,7 @@ class ConfigurationTest < Test::Unit::TestCase
   end
 
   should "allow ignore by filters to be appended" do
-    assert_appends_value(:ignore_by_filters) do |config|
+    assert_appends_value(:ignore_by_filters, :namespace => :block) do |config|
       new_filter = lambda {}
       config.ignore_by_filter(&new_filter)
       new_filter
@@ -134,6 +134,14 @@ class ConfigurationTest < Test::Unit::TestCase
     new_filter = 'hello'
     config.ignore << new_filter
     assert_same_elements original_filters + [new_filter], config.ignore
+  end
+
+  should "allow arbitrary arguments to be appended for the filter" do
+    assert_appends_value(:ignore_by_filters, :namespace => :args) do |config|
+      new_filter = lambda {}
+      config.ignore_by_filter(:arg1, :arg2, &new_filter)
+      [:arg1, :arg2]
+    end
   end
 
   should "allow ignored exceptions to be replaced" do
@@ -185,16 +193,22 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_equal value, config.send(option)
   end
 
-  def assert_appends_value(option, &block)
+  def assert_appends_value(method, options = {}, &block)
     config = HoptoadNotifier::Configuration.new
-    original_values = config.send(option).dup
+    original_values = config.send(method).dup
     block ||= lambda do |config|
       new_value = 'hello'
-      config.send(option) << new_value
+      config.send(method) << new_value
       new_value
     end
     new_value = block.call(config)
-    assert_same_elements original_values + [new_value], config.send(option)
+    modified_values = config.send(method)
+
+    if options[:namespace]
+      original_values.map! { |x| x[options[:namespace]] }
+      modified_values.map! { |x| x[options[:namespace]] }
+    end
+    assert_same_elements original_values + [new_value], config.send(method)
   end
 
   def assert_replaces(option, setter)
