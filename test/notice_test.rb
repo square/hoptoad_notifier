@@ -5,9 +5,7 @@ class NoticeTest < Test::Unit::TestCase
   include DefinesConstants
 
   def configure
-    returning HoptoadNotifier::Configuration.new do |config|
-      config.api_key = 'abc123def456'
-    end
+    HoptoadNotifier::Configuration.new.tap { |config| config.api_key = 'abc123def456' }
   end
 
   def build_notice(args = {})
