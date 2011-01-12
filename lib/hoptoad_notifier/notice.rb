@@ -159,8 +159,12 @@ module HoptoadNotifier
 
     # Determines if this notice should be ignored
     def ignore?
-      ignored_class_names.include?(error_class) ||
-        ignore_by_filters.any? {|filter| filter.is_a?(Hash) ? filter[:block].call(self) : filter.call(self) }
+      !!first_ignored_filter
+    end
+
+    # Returns the first ignored filter object
+    def first_ignored_filter
+      ignored_class_names.detect(error_class) || ignore_by_filters.detect { |f| f.is_a?(Hash) ? f[:block].call(self) : f.call(self) }
     end
 
     # Allows properties to be accessed using a hash-like syntax

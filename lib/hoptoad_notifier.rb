@@ -96,7 +96,7 @@ module HoptoadNotifier
     # @see HoptoadNotifier.notify
     def notify_or_ignore(exception, opts = {})
       notice = build_notice_for(exception, opts)
-      send_notice(notice) unless notice.ignore?
+      send_notice(notice) unless notice.first_ignored_filter
     end
 
     def build_lookup_hash_for(exception, options = {})
