@@ -1,13 +1,18 @@
 require 'net/http'
 require 'net/https'
 require 'rubygems'
-require 'active_support'
+begin
+  require 'active_support'
+rescue LoadError
+  require 'activesupport'
+end
 require 'hoptoad_notifier/version'
 require 'hoptoad_notifier/configuration'
 require 'hoptoad_notifier/notice'
 require 'hoptoad_notifier/sender'
 require 'hoptoad_notifier/backtrace'
 require 'hoptoad_notifier/rack'
+require 'hoptoad_notifier/user_informer'
 
 require 'hoptoad_notifier/railtie' if defined?(Rails::Railtie)
 
@@ -127,7 +132,7 @@ module HoptoadNotifier
     def build_notice_for(exception, opts = {})
       exception = unwrap_exception(exception)
       if exception.respond_to?(:to_hash)
-        opts = opts.merge(exception)
+        opts = opts.merge(exception.to_hash)
       else
         opts = opts.merge(:exception => exception)
       end
