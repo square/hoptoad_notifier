@@ -33,6 +33,27 @@ Feature: Install the Gem in a Rails application
     And I run the hoptoad generator with ""
     Then I should receive a Hoptoad notification
 
+  Scenario: Configuration within initializer isn't overridden by Railtie
+    When I generate a new Rails application
+    And I configure the Hoptoad shim
+    And I configure my application to require the "hoptoad_notifier" gem
+    And I run the hoptoad generator with "-k myapikey"
+    Then the command should have run successfully
+    When I configure the notifier to use the following configuration lines:
+      """
+      config.api_key = "myapikey"
+      config.project_root = "argle/bargle"
+      """
+    And I define a response for "TestController#index":
+      """
+      session[:value] = "test"
+      raise RuntimeError, "some message"
+      """
+    And I route "/test/index" to "test#index"
+    And I perform a request to "http://example.com:123/test/index?param=value"
+    Then I should receive the following Hoptoad notification:
+      | project-root | argle/bargle |
+
   Scenario: Try to install without an api key
     When I generate a new Rails application
     And I configure my application to require the "hoptoad_notifier" gem
@@ -90,46 +111,6 @@ Feature: Install the Gem in a Rails application
       | parameters    | param: value                                  |
       | url           | http://example.com:123/test/index?param=value |
 
-  Scenario: Include the Javascript notifier automatically
-    When I generate a new Rails application
-    And I configure the Hoptoad shim
-    And I configure my application to require the "hoptoad_notifier" gem
-    When I configure the notifier to use the following configuration lines:
-      """
-      config.api_key     = "myapikey"
-      config.js_notifier = true
-      """
-    And I define a response for "TestController#index":
-      """
-        render :text => "<html><head></head><body></body></html>"
-      """
-    And I route "/test/index" to "test#index"
-    And I perform a request to "http://example.com:123/test/index"
-    Then I should see the notifier JavaScript for the following:
-      | api_key  | environment | host           |
-      | myapikey | production  | hoptoadapp.com |
-
-  Scenario: Include the Javascript notifier automatically using custom notifier configuration settings
-    When I generate a new Rails application
-    And I configure the Hoptoad shim
-    And I configure my application to require the "hoptoad_notifier" gem
-    When I configure the notifier to use the following configuration lines:
-      """
-      config.api_key     = "myapikey!"
-      config.host        = "myhoptoad.com"
-      config.port        = 3001
-      config.js_notifier = true
-      """
-    And I define a response for "TestController#index":
-      """
-        render :text => "<html><head></head><body></body></html>"
-      """
-    And I route "/test/index" to "test#index"
-    And I perform a request to "http://example.com:123/test/index"
-    Then I should see the notifier JavaScript for the following:
-      | api_key   | environment | host               |
-      | myapikey! | production  | myhoptoad.com:3001 |
-
   Scenario: The gem should not be considered a framework gem
     When I generate a new Rails application
     And I configure the Hoptoad shim
@@ -151,8 +132,8 @@ Feature: Install the Gem in a Rails application
     When I generate a new Rails application
     And I configure the Hoptoad shim
     And I configure the Heroku rake shim
+    And I configure the Heroku gem shim with "myapikey"
     And I configure my application to require the "hoptoad_notifier" gem
-    And I set the environment variable "HOPTOAD_API_KEY" to "myapikey"
     And I run the hoptoad generator with "--heroku"
     Then the command should have run successfully
     And I should receive a Hoptoad notification
@@ -233,4 +214,26 @@ Feature: Install the Gem in a Rails application
       | error class   | RuntimeError                                  |
       | params        | secret: [FILTERED]                            |
       | session       | secret: [FILTERED]                            |
+      | url           | http://example.com:123/test/index?param=value |
+
+  Scenario: Notify hoptoad within the controller
+    When I generate a new Rails application
+    And I configure the Hoptoad shim
+    And I configure my application to require the "hoptoad_notifier" gem
+    And I run the hoptoad generator with "-k myapikey"
+    And I define a response for "TestController#index":
+      """
+      session[:value] = "test"
+      notify_hoptoad(RuntimeError.new("some message"))
+      render :nothing => true
+      """
+    And I route "/test/index" to "test#index"
+    And I perform a request to "http://example.com:123/test/index?param=value"
+    Then I should receive the following Hoptoad notification:
+      | component     | test                                          |
+      | action        | index                                         |
+      | error message | RuntimeError: some message                    |
+      | error class   | RuntimeError                                  |
+      | session       | value: test                                   |
+      | parameters    | param: value                                  |
       | url           | http://example.com:123/test/index?param=value |

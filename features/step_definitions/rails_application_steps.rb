@@ -34,6 +34,10 @@ When /^I run the hoptoad generator with "([^\"]*)"$/ do |generator_args|
   end
 end
 
+When /^I print the console output$/ do
+  puts @terminal.output
+end
+
 Given /^I have installed the "([^\"]*)" gem$/ do |gem_name|
   @terminal.install_gem(gem_name)
 end
@@ -195,72 +199,16 @@ When /^I define a response for "([^\"]*)":$/ do |controller_and_action, definiti
 end
 
 When /^I perform a request to "([^\"]*)"$/ do |uri|
-  if rails3?
-    request_script = <<-SCRIPT
-      require 'config/environment'
+  perform_request(uri)
+end
 
-      env      = Rack::MockRequest.env_for(#{uri.inspect})
-      response = RailsRoot::Application.call(env).last
+When /^I perform a request to "([^\"]*)" in the "([^\"]*)" environment$/ do |uri, environment|
+  perform_request(uri, environment)
+end
 
-      if response.is_a?(Array)
-        puts response.join
-      else
-        puts response.body
-      end
-    SCRIPT
-    File.open(File.join(RAILS_ROOT, 'request.rb'), 'w') { |file| file.write(request_script) }
-    @terminal.cd(RAILS_ROOT)
-    @terminal.run("./script/rails runner -e production request.rb")
-  elsif rails_uses_rack?
-    request_script = <<-SCRIPT
-      require 'config/environment'
-
-      env = Rack::MockRequest.env_for(#{uri.inspect})
-      app = Rack::Lint.new(ActionController::Dispatcher.new)
-
-      status, headers, body = app.call(env)
-
-      response = ""
-      if body.respond_to?(:to_str)
-        response << body
-      else
-        body.each { |part| response << part }
-      end
-
-      puts response
-    SCRIPT
-    File.open(File.join(RAILS_ROOT, 'request.rb'), 'w') { |file| file.write(request_script) }
-    @terminal.cd(RAILS_ROOT)
-    @terminal.run("./script/runner -e production request.rb")
-  else
-    uri = URI.parse(uri)
-    request_script = <<-SCRIPT
-      require 'cgi'
-      class CGIWrapper < CGI
-        def initialize(*args)
-          @env_table = {}
-          @stdinput = $stdin
-          super(*args)
-        end
-        attr_reader :env_table
-      end
-      $stdin = StringIO.new("")
-      cgi = CGIWrapper.new
-      cgi.env_table.update({
-        'HTTPS'          => 'off',
-        'REQUEST_METHOD' => "GET",
-        'HTTP_HOST'      => #{[uri.host, uri.port].join(':').inspect},
-        'SERVER_PORT'    => #{uri.port.inspect},
-        'REQUEST_URI'    => #{uri.request_uri.inspect},
-        'PATH_INFO'      => #{uri.path.inspect},
-        'QUERY_STRING'   => #{uri.query.inspect}
-      })
-      require 'dispatcher' unless defined?(ActionController::Dispatcher)
-      Dispatcher.dispatch(cgi)
-    SCRIPT
-    File.open(File.join(RAILS_ROOT, 'request.rb'), 'w') { |file| file.write(request_script) }
-    @terminal.cd(RAILS_ROOT)
-    @terminal.run("./script/runner -e production request.rb")
+Given /^the response page for a "([^\"]*)" error is$/ do |error, html|
+  File.open(File.join(RAILS_ROOT, "public", "#{error}.html"), "w") do |file|
+    file.write(html)
   end
 end
 
@@ -279,6 +227,7 @@ Then /^I should receive the following Hoptoad notification:$/ do |table|
 
   doc.should have_content('//component', hash['component']) if hash['component']
   doc.should have_content('//action', hash['action']) if hash['action']
+  doc.should have_content('//server-environment/project-root', hash['project-root']) if hash['project-root']
 
   if hash['session']
     session_key, session_value = hash['session'].split(': ')
@@ -350,6 +299,20 @@ When /^I configure the Heroku rake shim$/ do
   @terminal.invoke_heroku_rake_tasks_locally = true
 end
 
+When /^I configure the Heroku gem shim with "([^\"]*)"$/ do |api_key|
+  heroku_script_bin = File.join(TEMP_DIR, "bin")
+  FileUtils.mkdir_p(heroku_script_bin)
+  heroku_script     = File.join(heroku_script_bin, "heroku")
+  File.open(heroku_script, "w") do |f|
+    f.puts "#!/bin/bash"
+    f.puts "if [[ $1 == 'console' && $2 == 'puts ENV[%{HOPTOAD_API_KEY}]' ]]; then"
+    f.puts "  echo #{api_key}"
+    f.puts "fi"
+  end
+  FileUtils.chmod(0755, heroku_script)
+  @terminal.prepend_path(heroku_script_bin)
+end
+
 When /^I configure the application to filter parameter "([^\"]*)"$/ do |parameter|
   if rails3?
     application_filename = File.join(RAILS_ROOT, 'config', 'application.rb')
@@ -383,15 +346,38 @@ end
 Then /^I should see the notifier JavaScript for the following:$/ do |table|
   hash = table.hashes.first
   host        = hash['host']        || 'hoptoadapp.com'
+  secure      = hash['secure']      || false
   api_key     = hash['api_key']
   environment = hash['environment'] || 'production'
 
-  response = Nokogiri::HTML.parse('<html>' + @terminal.output.split('<html>').last)
-  response.css("script[type='text/javascript'][src='http://#{host}/javascripts/notifier.js']").first.should_not be_nil
+  document_body = '<html>' + @terminal.output.split('<html>').last
+  document_body.should include("#{host}/javascripts/notifier.js")
+
+  response = Nokogiri::HTML.parse(document_body)
   response.css("script[type='text/javascript']:last-child").each do |element|
     content = element.content
     content.should include("Hoptoad.setKey('#{api_key}');")
     content.should include("Hoptoad.setHost('#{host}');")
     content.should include("Hoptoad.setEnvironment('#{environment}');")
   end
+end
+
+Then "the notifier JavaScript should provide the following errorDefaults:" do |table|
+  hash = table.hashes.first
+
+  document_body = '<html>' + @terminal.output.split('<html>').last
+
+  response = Nokogiri::HTML.parse(document_body)
+  response.css("script[type='text/javascript']:last-child").each do |element|
+    content = element.content
+
+    hash.each do |key, value|
+      content.should =~ %r{Hoptoad\.setErrorDefaults.*#{key}: "#{value}}m
+    end
+  end
+end
+
+Then /^I should not see notifier JavaScript$/ do
+  response = Nokogiri::HTML.parse('<html>' + @terminal.output.split('<html>').last)
+  response.at_css("script[type='text/javascript'][src$='/javascripts/notifier.js']").should be_nil
 end

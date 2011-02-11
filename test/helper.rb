@@ -1,7 +1,13 @@
 require 'test/unit'
 require 'rubygems'
 
-gem 'jferris-mocha', '>= 0.9.5.0.1241126838'
+gem "activesupport", "= 2.3.8"
+gem "activerecord",  "= 2.3.8"
+gem "actionpack",    "= 2.3.8"
+gem "nokogiri",      "= 1.4.3.1"
+gem "shoulda",       "= 2.11.3"
+gem 'bourne', '>= 1.0'
+gem "sham_rack",     "~> 1.3.0"
 
 $LOAD_PATH << File.join(File.dirname(__FILE__), *%w[.. vendor ginger lib])
 $LOAD_PATH << File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
@@ -11,6 +17,7 @@ require 'mocha'
 
 require 'ginger'
 
+
 require 'action_controller'
 require 'action_controller/test_process'
 require 'active_record'
@@ -18,6 +25,8 @@ require 'active_record/base'
 require 'active_support'
 require 'nokogiri'
 require 'rack'
+require 'bourne'
+require 'sham_rack'
 
 require "hoptoad_notifier"
 

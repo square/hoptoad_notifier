@@ -4,6 +4,12 @@ Before do
   @terminal = Terminal.new
 end
 
+After do |story|
+  if story.failed?
+    # puts @terminal.output
+  end
+end
+
 class Terminal
   attr_reader :output, :status
   attr_accessor :environment_variables, :invoke_heroku_rake_tasks_locally
@@ -32,7 +38,8 @@ class Terminal
 
     output << "#{command}\n"
     FileUtils.cd(@cwd) do
-      cmdline = "#{environment_settings} #{command} 2>&1"
+      # The ; forces ruby to shell out so the env settings work right
+      cmdline = "#{environment_settings} #{command} 2>&1 ; "
       logger.debug(cmdline)
       result = `#{cmdline}`
       logger.debug(result)
@@ -56,6 +63,7 @@ class Terminal
   def build_and_install_gem(gemspec)
     pkg_dir = File.join(TEMP_DIR, 'pkg')
     FileUtils.mkdir_p(pkg_dir)
+    `rake gemspec`
     output = `gem build #{gemspec} 2>&1`
     gem_file = Dir.glob("*.gem").first
     unless gem_file
@@ -72,6 +80,10 @@ class Terminal
 
   def uninstall_gem(gem)
     `gem uninstall -i #{BUILT_GEM_ROOT} #{gem}`
+  end
+
+  def prepend_path(path)
+    @environment_variables['PATH'] = path + ":" + @environment_variables['PATH']
   end
 
   private

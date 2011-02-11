@@ -3,6 +3,14 @@ module HoptoadNotifier
   class Sender
 
     NOTICES_URI = '/notifier_api/v2/notices/'.freeze
+    HTTP_ERRORS = [Timeout::Error,
+                   Errno::EINVAL,
+                   Errno::ECONNRESET,
+                   EOFError,
+                   Net::HTTPBadResponse,
+                   Net::HTTPHeaderSyntaxError,
+                   Net::ProtocolError,
+                   Errno::ECONNREFUSED].freeze
 
     def initialize(options = {})
       [:proxy_host, :proxy_port, :proxy_user, :proxy_pass, :protocol,
@@ -34,7 +42,7 @@ module HoptoadNotifier
 
       response = begin
                    http.post(url.path, data, HEADERS)
-                 rescue TimeoutError => e
+                 rescue *HTTP_ERRORS => e
                    log :error, "Timeout while contacting the Hoptoad server."
                    nil
                  end
@@ -44,6 +52,11 @@ module HoptoadNotifier
         log :info, "Success: #{response.class}", response
       else
         log :error, "Failure: #{response.class}", response
+      end
+
+      if response && response.respond_to?(:body)
+        error_id = response.body.match(%r{<error-id[^>]*>(.*?)</error-id>})
+        error_id[1] if error_id
       end
     end
 

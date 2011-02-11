@@ -7,7 +7,8 @@ module HoptoadNotifier
         :http_open_timeout, :http_read_timeout, :ignore, :ignore_by_filters,
         :ignore_user_agent, :notifier_name, :notifier_url, :notifier_version,
         :params_filters, :project_root, :port, :protocol, :proxy_host,
-        :proxy_pass, :proxy_port, :proxy_user, :secure, :framework, :js_notifier].freeze
+        :proxy_pass, :proxy_port, :proxy_user, :secure, :framework,
+        :user_information].freeze
 
     # The API key for your project, found on the project edit form.
     attr_accessor :api_key
@@ -62,9 +63,6 @@ module HoptoadNotifier
     # +true+ if you want to check for production errors matching development errors, +false+ otherwise.
     attr_accessor :development_lookup
 
-    # +true+ if you want to enable the JavaScript notifier in production environments
-    attr_accessor :js_notifier
-
     # The name of the environment the application is running in
     attr_accessor :environment_name
 
@@ -82,6 +80,9 @@ module HoptoadNotifier
 
     # The logger used by HoptoadNotifier
     attr_accessor :logger
+
+    # The text that the placeholder is replaced with. {{error_id}} is the actual error number.
+    attr_accessor :user_information
 
     # The framework HoptoadNotifier is configured to use
     attr_accessor :framework
@@ -111,7 +112,8 @@ module HoptoadNotifier
                       'ActionController::RoutingError',
                       'ActionController::InvalidAuthenticityToken',
                       'CGI::Session::CookieStore::TamperedWithCookie',
-                      'ActionController::UnknownAction']
+                      'ActionController::UnknownAction',
+                      'AbstractController::ActionNotFound']
 
     alias_method :secure?, :secure
 
@@ -127,11 +129,11 @@ module HoptoadNotifier
       @ignore_user_agent        = []
       @development_environments = %w(development test cucumber)
       @development_lookup       = true
-      @js_notifier              = false
       @notifier_name            = 'Hoptoad Notifier'
       @notifier_version         = VERSION
       @notifier_url             = 'http://hoptoadapp.com'
       @framework                = 'Standalone'
+      @user_information         = 'Hoptoad Error {{error_id}}'
     end
 
     # Takes a block and adds it to the list of backtrace filters. When the filters
@@ -214,6 +216,10 @@ module HoptoadNotifier
       else
         'http'
       end
+    end
+
+    def js_notifier=(*args)
+      warn '[HOPTOAD] config.js_notifier has been deprecated and has no effect.  You should use <%= hoptoad_javascript_notifier %> directly at the top of your layouts.  Be sure to place it before all other javascript.'
     end
 
     def environment_filters
