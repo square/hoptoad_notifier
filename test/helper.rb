@@ -117,7 +117,7 @@ class Test::Unit::TestCase
   end
 
   def stub_notice!
-    returning stub_notice do |notice|
+    stub_notice.tap do |notice|
       HoptoadNotifier::Notice.stubs(:new => notice)
     end
   end
