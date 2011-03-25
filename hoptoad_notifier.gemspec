@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{hoptoad_notifier}
-  s.version = "2.4.5"
+  s.name = %q{square-hoptoad_notifier}
+  s.version = "2.4.8"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["thoughtbot, inc"]
