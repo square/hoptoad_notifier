@@ -1,3 +1,21 @@
+Version 2.4.8 - Mon Mar 21 11:11:16 -0400 2011
+===============================================================================
+
+Jonathan Yurek(1):
+      Prevent infinite loops from recursive data structures.
+
+Version 2.4.7 - Thu Mar 10 16:21:31 -0500 2011
+===============================================================================
+
+Jonathan Yurek(1):
+      Rails generator requires './config/boot' for 1.9.2 compatibility.
+
+Version 2.4.6 - Tue Feb 15 15:51:17 -0500 2011
+===============================================================================
+
+Jonathan Yurek(1):
+      Modify the error page's body in-place.
+
 Version 2.4.5 - Wed Feb 02 13:24:29 -0500 2011
 ===============================================================================
 
@@ -376,6 +394,9 @@ Nick Quaranto (3):
       Fixing the capistrano hook bit in the readme
       Adding changeling:minor and changeling:patch to automate notifier releases
       Adding rake changeling:push
+
+
+
 
 
 
