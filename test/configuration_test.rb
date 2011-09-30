@@ -27,6 +27,7 @@ class ConfigurationTest < Test::Unit::TestCase
                           HoptoadNotifier::Configuration::DEFAULT_BACKTRACE_FILTERS
     assert_config_default :ignore,
                           HoptoadNotifier::Configuration::IGNORE_DEFAULT
+    assert_config_default :worker_ignore,       []
     assert_config_default :development_lookup, true
     assert_config_default :framework, 'Standalone'
   end
@@ -81,7 +82,7 @@ class ConfigurationTest < Test::Unit::TestCase
     hash = config.to_hash
     [:api_key, :backtrace_filters, :development_environments,
      :environment_name, :host, :http_open_timeout,
-     :http_read_timeout, :ignore, :ignore_by_filters, :ignore_user_agent,
+     :http_read_timeout, :ignore, :worker_ignore, :ignore_by_filters, :ignore_user_agent,
      :notifier_name, :notifier_url, :notifier_version, :params_filters,
      :project_root, :port, :protocol, :proxy_host, :proxy_pass, :proxy_port,
      :proxy_user, :secure, :development_lookup].each do |option|
@@ -143,8 +144,20 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_same_elements original_filters + [new_filter], config.ignore
   end
 
+  should "allow worker_ignored exceptions to be appended" do
+    config = HoptoadNotifier::Configuration.new
+    original_filters = config.worker_ignore.dup
+    new_filter = 'hello'
+    config.worker_ignore << new_filter
+    assert_same_elements original_filters + [new_filter], config.worker_ignore
+  end
+
   should "allow ignored exceptions to be replaced" do
     assert_replaces(:ignore, :ignore_only=)
+  end
+
+  should "allow worker_ignored exceptions to be replaced" do
+    assert_replaces(:worker_ignore, :worker_ignore_only=)
   end
 
   should "allow ignored user agents to be replaced" do

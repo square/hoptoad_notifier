@@ -4,7 +4,7 @@ module HoptoadNotifier
 
     OPTIONS = [:api_key, :backtrace_filters, :development_environments,
         :development_lookup, :environment_name, :host,
-        :http_open_timeout, :http_read_timeout, :ignore, :ignore_by_filters,
+        :http_open_timeout, :http_read_timeout, :ignore, :worker_ignore, :ignore_by_filters,
         :ignore_user_agent, :notifier_name, :notifier_url, :notifier_version,
         :params_filters, :project_root, :port, :protocol, :proxy_host,
         :proxy_pass, :proxy_port, :proxy_user, :secure, :framework,
@@ -53,6 +53,9 @@ module HoptoadNotifier
 
     # A list of exception classes to ignore. The array can be appended to.
     attr_reader :ignore
+
+    #A list of exception classes to ignore in the worker processes.
+    attr_reader :worker_ignore
 
     # A list of user agents that are being ignored. The array can be appended to.
     attr_reader :ignore_user_agent
@@ -126,6 +129,7 @@ module HoptoadNotifier
       @backtrace_filters        = DEFAULT_BACKTRACE_FILTERS.dup
       @ignore_by_filters        = []
       @ignore                   = IGNORE_DEFAULT.dup
+      @worker_ignore            = []
       @ignore_user_agent        = []
       @development_environments = %w(development test cucumber)
       @development_lookup       = true
@@ -170,6 +174,13 @@ module HoptoadNotifier
     # @param [Array<Exception>] names A list of exceptions to ignore.
     def ignore_only=(names)
       @ignore = [names].flatten
+    end
+
+    # Overrides the list of default worker_ignored errors.
+    #
+    # @param [Array<Exception>] names A list of exceptions to ignore.
+    def worker_ignore_only=(names)
+      @worker_ignore = [names].flatten
     end
 
     # Overrides the list of default ignored user agents
