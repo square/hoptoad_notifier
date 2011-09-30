@@ -53,9 +53,6 @@ module HoptoadNotifier
     # See Configuration#ignore
     attr_reader :ignore
 
-    # See Configuration#worker_ignore
-    attr_reader :worker_ignore
-
     # See Configuration#ignore_by_filters
     attr_reader :ignore_by_filters
 
@@ -80,7 +77,6 @@ module HoptoadNotifier
       self.notifier_url     = args[:notifier_url]
 
       self.ignore              = args[:ignore]              || []
-      self.worker_ignore       = args[:worker_ignore]       || []
       self.ignore_by_filters   = args[:ignore_by_filters]   || []
       self.backtrace_filters   = args[:backtrace_filters]   || []
       self.params_filters      = args[:params_filters]      || []
@@ -162,17 +158,9 @@ module HoptoadNotifier
       xml.to_s
     end
 
-    def ignore_for_platform?(error_class)
-      if ::Rails.env.web_server?
-        ignored_class_names.include?(error_class)
-      else
-        worker_ignored_class_names.include?(error_class)
-      end
-    end
-
     # Determines if this notice should be ignored
     def ignore?
-      ignore_for_platform?(error_class) ||
+      ignored_class_names.include?(error_class) ||
         ignore_by_filters.any? {|filter| filter.call(self) }
     end
 
@@ -195,7 +183,7 @@ module HoptoadNotifier
 
     attr_writer :exception, :api_key, :backtrace, :error_class, :error_message,
       :backtrace_filters, :parameters, :params_filters,
-      :environment_filters, :session_data, :project_root, :url, :ignore, :worker_ignore,
+      :environment_filters, :session_data, :project_root, :url, :ignore,
       :ignore_by_filters, :notifier_name, :notifier_url, :notifier_version,
       :component, :action, :cgi_data, :environment_name
 
@@ -302,16 +290,6 @@ module HoptoadNotifier
     # TODO: move this into Configuration or another class
     def ignored_class_names
       ignore.collect do |string_or_class|
-        if string_or_class.respond_to?(:name)
-          string_or_class.name
-        else
-          string_or_class
-        end
-      end
-    end
-
-    def worker_ignored_class_names
-      worker_ignore.collect do |string_or_class|
         if string_or_class.respond_to?(:name)
           string_or_class.name
         else
