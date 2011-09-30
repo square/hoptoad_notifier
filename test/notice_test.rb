@@ -277,52 +277,75 @@ class NoticeTest < Test::Unit::TestCase
     end
   end
 
-  should "not ignore an exception not matching ignore filters" do
-    notice = build_notice(:error_class       => 'ArgumentError',
-                          :ignore            => ['Argument'],
-                          :ignore_by_filters => [lambda { |notice| false }])
-    assert !notice.ignore?
-  end
+  context "resque worker errors" do
+    setup do
+      Rails.stubs(:env).returns(OpenStruct.new(:web_server? => false))
+    end
 
-  should "ignore an exception with a matching error class" do
-    notice = build_notice(:error_class => 'ArgumentError',
-                          :ignore      => [ArgumentError])
-    assert notice.ignore?
-  end
-
-  should "ignore an exception with a matching error class name" do
-    notice = build_notice(:error_class => 'ArgumentError',
-                          :ignore      => ['ArgumentError'])
-    assert notice.ignore?
-  end
-
-  should "ignore an exception with a matching filter" do
-    filter = lambda {|notice| notice.error_class == 'ArgumentError' }
-    notice = build_notice(:error_class       => 'ArgumentError',
-                          :ignore_by_filters => [filter])
-    assert notice.ignore?
-  end
-
-  should "not raise without an ignore list" do
-    notice = build_notice(:ignore => nil, :ignore_by_filters => nil)
-    assert_nothing_raised do
-      notice.ignore?
+    should "not ignore web server errors" do
+      notice = build_notice(:error_class => 'ArgumentError',
+                            :ignore      => ['ArgumentError'])
+      assert !notice.ignore?
+    end
+    should "ignore worker errors" do
+      notice = build_notice(:error_class => 'ArgumentError',
+                            :worker_ignore      => ['ArgumentError'])
+      assert notice.ignore?
     end
   end
 
-  ignored_error_classes = %w(
-    ActiveRecord::RecordNotFound
-    AbstractController::ActionNotFound
-    ActionController::RoutingError
-    ActionController::InvalidAuthenticityToken
-    CGI::Session::CookieStore::TamperedWithCookie
-    ActionController::UnknownAction
-  )
+  context "web server errors" do
+    setup do
+      Rails.stubs(:env).returns(OpenStruct.new(:web_server? => true))
+    end
 
-  ignored_error_classes.each do |ignored_error_class|
-    should "ignore #{ignored_error_class} error by default" do
-      notice = build_notice(:error_class => ignored_error_class)
+    should "not ignore an exception not matching ignore filters" do
+      notice = build_notice(:error_class       => 'ArgumentError',
+                            :ignore            => ['Argument'],
+                            :ignore_by_filters => [lambda { |notice| false }])
+      assert !notice.ignore?
+    end
+
+    should "ignore an exception with a matching error class" do
+      notice = build_notice(:error_class => 'ArgumentError',
+                            :ignore      => [ArgumentError])
       assert notice.ignore?
+    end
+
+    should "ignore an exception with a matching error class name" do
+      notice = build_notice(:error_class => 'ArgumentError',
+                            :ignore      => ['ArgumentError'])
+      assert notice.ignore?
+    end
+
+    should "ignore an exception with a matching filter" do
+      filter = lambda {|notice| notice.error_class == 'ArgumentError' }
+      notice = build_notice(:error_class       => 'ArgumentError',
+                            :ignore_by_filters => [filter])
+      assert notice.ignore?
+    end
+
+    should "not raise without an ignore list" do
+      notice = build_notice(:ignore => nil, :ignore_by_filters => nil)
+      assert_nothing_raised do
+        notice.ignore?
+      end
+    end
+
+    ignored_error_classes = %w(
+      ActiveRecord::RecordNotFound
+      AbstractController::ActionNotFound
+      ActionController::RoutingError
+      ActionController::InvalidAuthenticityToken
+      CGI::Session::CookieStore::TamperedWithCookie
+      ActionController::UnknownAction
+    )
+
+    ignored_error_classes.each do |ignored_error_class|
+      should "ignore #{ignored_error_class} error by default" do
+        notice = build_notice(:error_class => ignored_error_class)
+        assert notice.ignore?
+      end
     end
   end
 

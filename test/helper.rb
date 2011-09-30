@@ -246,3 +246,9 @@ class FakeLogger
   def fatal(*args); end
 end
 
+#Fake rails env
+module Rails
+  def self.env
+    OpenStruct.new(:web_server? => true)
+  end
+end
